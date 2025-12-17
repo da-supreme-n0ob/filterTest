@@ -20,7 +20,7 @@ public class sharpeningFilter {
     };
     private int[][] originalImage;
     private int[][] sharpenedImage;
-
+    
     public sharpeningFilter(int[][] input, int width, int height,int intensity){
         //intensity is a integer from 0-2 and determines kernel used
         this.originalImage=input;

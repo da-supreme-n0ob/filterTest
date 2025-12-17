@@ -1,5 +1,6 @@
 package team5427.lib.filters.soft.lowPassFilters;
 import java.util.Arrays;
+
 //gaussian blur is used to reduce image noise by blurring pixels with their surrounding neighbors
 public class gaussianFilter {
     //2D array implementation, may be buggy

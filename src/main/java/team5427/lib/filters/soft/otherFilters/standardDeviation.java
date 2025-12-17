@@ -2,50 +2,68 @@ package team5427.lib.filters.soft.otherFilters;
 
 import java.util.Arrays;
 
+import edu.wpi.first.wpilibj.Timer;
+import team5427.lib.filters.photonVisionFilter;
+
 public class standardDeviation{
-    private final double baseStandardDeviation=0.1;
+    private final double baseStandardDeviation=0.35;
     private double newStandardDeviation;
     private double ambiguity;
     private double area;
     private double distance;
-    private final double ambiguityWeight=4; //not sure how to balance those constants
-    private final double areaWeight= 2;
-    private final double distanceWeight = 0.1;
-    private static double[] pictureStandardDeviation=null;
+    private double latency;
+    private double timeElapsed;
 
-    public standardDeviation(double ambiguity, double area, double distance){
-        this.ambiguity=ambiguity;
-        this.area=area;
-        this.distance=distance;
+    //balancing based on research, can alter if necessary
+    private final double ambiguityWeight=3;
+    private final double areaWeight= 0.4;
+    private final double nominalArea = 0.02;
+    private final double epsilon = 1e-6;//helps prevent division by zero when area is too small
+    private final double distanceWeight = 0.15;
+    private final double latencyWeight = 1.5;
+    private final double timeElapsedWeight = 2;
+
+    public standardDeviation(String cameraName){
+        photonVisionFilter camera = new photonVisionFilter(cameraName);
+        this.ambiguity = camera.getPoseAmbiguity();
+        this.area = camera.getTargetArea();
+        this.distance = getDistance(camera);
+        this.latency = camera.getResultLatency();
+        this.timeElapsed = Timer.getFPGATimestamp()-camera.getResultTimestamp();
         calculate();
+    }
+    
+    private double getDistance(photonVisionFilter camera){
+        if(camera.hasTarget()){
+            double x = camera.getCameraToTargetX();
+            double y = camera.getCameraToTargetY();
+            double z = camera.getCameraToTargetZ();
+
+            double distance = Math.sqrt(x*x+y*y+z*z);
+            return distance;
+        }else{
+            return -1;
+        }
     }
 
     private void calculate(){
-        //if the ambiguity is too high, the picture won't be processed
-        if(ambiguity<0.2){
-            //formula
-            newStandardDeviation = baseStandardDeviation+ambiguityWeight*ambiguity+distanceWeight*Math.pow(distance,2)+1/Math.min((areaWeight*area),1);
-            //minimum on area part makes sure a very small area won't inflate the stddev too much
-        }
+        //broken up parts of the formula
+        double distancePart = distanceWeight*distance*distance;
+        double ambiguityPart = ambiguityWeight*ambiguity;
+        double areaPart = areaWeight*(nominalArea/(area+epsilon));
+        double latencyPart = latencyWeight*latency;
+        double timeElapsedPart = timeElapsedWeight*timeElapsed;
 
-        //updates the array
-        if(pictureStandardDeviation==null){
-            double[] tempArr = {newStandardDeviation};
-            pictureStandardDeviation = tempArr;
-        }else{
-            double[] tempArr = new double[pictureStandardDeviation.length+1];
-            for(int i=0;i<tempArr.length-1;i++){
-                tempArr[i]=pictureStandardDeviation[i];
-            }
-            tempArr[tempArr.length-1]=newStandardDeviation;
-            pictureStandardDeviation = tempArr;
+        //formula
+        double factor = 1+distancePart+ambiguityPart+areaPart+latencyPart+timeElapsedPart;
+        newStandardDeviation=baseStandardDeviation*factor;
+
+        //rejects if certain things are too extreme
+        if(distance>7||ambiguity>0.35||area<0.003||newStandardDeviation>3){
+            newStandardDeviation=-1;
         }
-        Arrays.sort(pictureStandardDeviation);
     }
     public double getStandardDeviation(){
         return newStandardDeviation;
-    }
-    public static double[] getPictureStandardDeviationArray(){
-        return pictureStandardDeviation;
     }
 }
