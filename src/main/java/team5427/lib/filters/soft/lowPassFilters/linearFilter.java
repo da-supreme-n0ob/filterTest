@@ -5,42 +5,42 @@ import java.util.Arrays;
 public class linearFilter {
     //moving-average filter
     private static final int windowSize = 10;
-    private static double[] window;
-    private double currentAverage;
+    private double[][] inputImage;
+    private double[][] finalImage;
 
-    public linearFilter(double value){
-        window= new double[]{value};
-        this.currentAverage=calculateAverage(window);
+    public linearFilter(double[][] input){
+        inputImage = input;
+        finalImage = calculate(inputImage);
     }
 
-    public void addValue(double value){
-        if(window.length+1<=10){
-            //array length will be still be less than n, so no deletion is necessary
-            double[] tempArr = new double[window.length+1];
-            for(int i=0;i< window.length;i++){
-                tempArr[i]= window[i];
+    public double[][] calculate(double[][] input){
+        double[][] output = input;
+
+        for(int i=1;i<output.length-1;i++){
+            for(int j=1;j<output[0].length-1;j++){
+                double neighbourSum = 0;
+
+                for(int y=-1;y<=1;y++){
+                    for(int x=-1;x<=1;x++){
+                        neighbourSum += input[i+y][j+x];
+                    }
+                }
+                neighbourSum/=9;
+
+                if(neighbourSum<0){
+                    neighbourSum = 0;
+                }else if(neighbourSum>255){
+                    neighbourSum = 255;
+                }
+
+                output[i][j] = neighbourSum;
             }
-            tempArr[window.length]=value;
-            window=tempArr;
-        }else{
-            //slides all inputs 1 index to the left
-            for(int i=0;i<windowSize-1;i++){
-                window[i]=window[i+1];
-            }
-            window[windowSize-1]=value;
         }
-        this.currentAverage=calculateAverage(window);
+
+        return output;
     }
 
-    private double calculateAverage(double[] array){
-        double total=0;
-        for(double x:array){
-            total+=x;
-        }
-        return total/array.length;
-    }
-
-    public double getCurrentAverage(){
-        return currentAverage;
+    public double[][] getResult(){
+        return finalImage;
     }
 }
